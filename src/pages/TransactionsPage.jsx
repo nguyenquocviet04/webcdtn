@@ -9,7 +9,6 @@ import {
 import useTransactionStore from '../store/transactionStore';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDate }     from '../utils/formatDate';
-import { getCategoryById } from '../constants/categories';
 import { sumBy }           from '../utils/calcPercent';
 import CategoryIcon        from '../components/ui/CategoryIcon';
 import Button              from '../components/ui/Button';
@@ -23,6 +22,7 @@ const PAGE_SIZE = 10;
 const TransactionsPage = () => {
   const { transactions, wallets, expenseCategories, incomeCategories, deleteTransaction } =
     useTransactionStore();
+  const getCategoryById = (id) => expenseCategories.find(c => c.id === id) || incomeCategories.find(c => c.id === id) || { name: 'Khác', icon: 'QuestionMark' };
 
   const [modalOpen, setModalOpen]       = useState(false);
   const [editData,  setEditData]        = useState(null);
@@ -63,10 +63,14 @@ const TransactionsPage = () => {
     setModalOpen(true);
   };
 
-  const handleDelete = () => {
-    deleteTransaction(deleteId);
-    toast.success('Đã xóa giao dịch');
-    setDeleteId(null);
+  const handleDelete = async () => {
+    try {
+      await deleteTransaction(deleteId);
+      toast.success('Đã xóa giao dịch');
+      setDeleteId(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi xóa giao dịch');
+    }
   };
 
   const handleAdd = () => {

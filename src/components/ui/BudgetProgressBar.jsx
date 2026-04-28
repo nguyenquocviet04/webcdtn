@@ -1,13 +1,15 @@
 // components/ui/BudgetProgressBar.jsx
 // Thanh tiến độ ngân sách với màu cảnh báo
 
-import { getCategoryById } from '../../constants/categories';
+import useTransactionStore from '../../store/transactionStore';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { calcPercent } from '../../utils/calcPercent';
 import CategoryIcon from './CategoryIcon';
 import { AlertTriangle } from 'lucide-react';
 
 const BudgetProgressBar = ({ budget, spent = 0, compact = false }) => {
+  const { expenseCategories, incomeCategories } = useTransactionStore();
+  const getCategoryById = (id) => expenseCategories.find(c => c.id === id) || incomeCategories.find(c => c.id === id) || { name: 'Khác', icon: 'QuestionMark' };
   const category = getCategoryById(budget.categoryId);
   const percent  = calcPercent(spent, budget.limit);
   const isWarning  = percent >= 80 && percent < 100;

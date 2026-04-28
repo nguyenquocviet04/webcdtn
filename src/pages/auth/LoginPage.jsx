@@ -8,21 +8,28 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, TrendingUp, Mail, Lock } from 'lucide-react';
-import { loginApi } from '../../api/authApi';
+import { loginApi, forgotPasswordApi } from '../../api/authApi';
 import useAuthStore from '../../store/authStore';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
 
 const schema = yup.object({
-  email:    yup.string().email('Email không hợp lệ').required('Vui lòng nhập email'),
+  email: yup.string().email('Email không hợp lệ').required('Vui lòng nhập email'),
   password: yup.string().min(6, 'Mật khẩu ít nhất 6 ký tự').required('Vui lòng nhập mật khẩu'),
 });
 
 const LoginPage = () => {
   const [showPass, setShowPass] = useState(false);
-  const { login }               = useAuthStore();
-  const navigate                = useNavigate();
-  const location                = useLocation();
-  const from                    = location.state?.from?.pathname || '/dashboard';
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotPassword, setForgotPassword] = useState('');
+  const [showForgotPass, setShowForgotPass] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const { login } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const {
     register, handleSubmit, formState: { errors, isSubmitting },
@@ -32,10 +39,28 @@ const LoginPage = () => {
     try {
       const { user, token } = await loginApi(data);
       login(user, token);
-      toast.success(`Chào mừng trở lại, ${user.name}! 👋`);
+      toast.success(`Chào mừng trở lại, ${user.name || user.full_name}! 👋`);
       navigate(from, { replace: true });
     } catch (err) {
-      toast.error(err.message || 'Đăng nhập thất bại');
+      const msg = err.response?.data?.message || err.message || 'Đăng nhập thất bại';
+      toast.error(msg);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail) return toast.error('Vui lòng nhập email');
+    if (!forgotPassword || forgotPassword.length < 6) return toast.error('Vui lòng nhập mật khẩu mới (ít nhất 6 ký tự)');
+    setIsResetting(true);
+    try {
+      const res = await forgotPasswordApi({ email: forgotEmail, newPassword: forgotPassword });
+      toast.success(res.message || 'Mật khẩu đã được đặt lại!');
+      setShowForgotModal(false);
+      setForgotEmail('');
+      setForgotPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi khi đặt lại mật khẩu');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -100,7 +125,7 @@ const LoginPage = () => {
             {/* Demo credentials hint */}
             <div className="mb-6 p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800">
               <p className="text-xs text-primary-700 dark:text-primary-300 font-medium">
-                🔑 Demo: <span className="font-mono">an.nguyen@email.com</span> / <span className="font-mono">123456</span>
+                🔑 Demo: <span className="font-mono">test@gmail.com</span> / <span className="font-mono">123456</span>
               </p>
             </div>
 
@@ -128,7 +153,7 @@ const LoginPage = () => {
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     Mật khẩu
                   </label>
-                  <a href="#" className="text-xs text-primary-600 hover:underline">Quên mật khẩu?</a>
+                  <button type="button" onClick={() => setShowForgotModal(true)} className="text-xs text-primary-600 hover:underline">Quên mật khẩu?</button>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -176,6 +201,68 @@ const LoginPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        isOpen={showForgotModal}
+        onClose={() => setShowForgotModal(false)}
+        title="Quên mật khẩu"
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-3 w-full">
+            <Button variant="secondary" onClick={() => setShowForgotModal(false)}>
+              Huỷ
+            </Button>
+            <Button loading={isResetting} onClick={handleForgotPassword}>
+              Xác nhận
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Nhập email tài khoản và mật khẩu mới bạn muốn đặt.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="email"
+                placeholder="ten@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                className="input-base pl-9"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Mật khẩu mới
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type={showForgotPass ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={forgotPassword}
+                onChange={(e) => setForgotPassword(e.target.value)}
+                className="input-base pl-9 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowForgotPass(!showForgotPass)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showForgotPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -3,7 +3,6 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { MOCK_USER } from '../constants/mockData';
 
 const useAuthStore = create(
   persist(

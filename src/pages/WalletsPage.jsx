@@ -11,6 +11,7 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import useTransactionStore from '../store/transactionStore';
+import { createTransferApi } from '../api/transferApi';
 import { formatCurrency }  from '../utils/formatCurrency';
 import { sumBy }           from '../utils/calcPercent';
 import AmountInput         from '../components/ui/AmountInput';
@@ -38,7 +39,7 @@ const transferSchema = yup.object({
 });
 
 const WalletsPage = () => {
-  const { wallets, addWallet, updateWallet, deleteWallet, addTransaction } = useTransactionStore();
+  const { wallets, addWallet, updateWallet, deleteWallet, fetchAllData } = useTransactionStore();
 
   const [walletModal,   setWalletModal]   = useState(false);
   const [transferModal, setTransferModal] = useState(false);
@@ -82,41 +83,44 @@ const WalletsPage = () => {
     setWalletModal(true);
   };
 
-  const onWalletSubmit = (data) => {
-    if (editData) {
-      updateWallet(editData.id, data);
-      toast.success('Đã cập nhật ví');
-    } else {
-      addWallet(data);
-      toast.success('Đã thêm ví mới');
+  const onWalletSubmit = async (data) => {
+    try {
+      if (editData) {
+        await updateWallet(editData.id, data);
+        toast.success('Đã cập nhật ví');
+      } else {
+        await addWallet(data);
+        toast.success('Đã thêm ví mới');
+      }
+      setWalletModal(false);
+    } catch (err) {
+      toast.error('Có lỗi xảy ra, thử lại sau');
     }
-    setWalletModal(false);
   };
 
-  const onTransferSubmit = (data) => {
-    const fromWallet = wallets.find((w) => w.id === data.fromWalletId);
+  const onTransferSubmit = async (data) => {
+    const fromWallet = wallets.find((w) => w.id === parseInt(data.fromWalletId) || w.id === data.fromWalletId);
     if (!fromWallet || fromWallet.balance < data.amount) {
       toast.error('Số dư ví nguồn không đủ');
       return;
     }
-    // Tạo 2 giao dịch đối ứng
-    addTransaction({
-      type: 'expense', amount: data.amount, categoryId: 'other_expense',
-      walletId: data.fromWalletId, description: `Chuyển sang ${wallets.find((w) => w.id === data.toWalletId)?.name}`,
-      date: new Date().toISOString().slice(0,10), note: data.note || '',
-    });
-    addTransaction({
-      type: 'income', amount: data.amount, categoryId: 'other_income',
-      walletId: data.toWalletId, description: `Nhận từ ${fromWallet.name}`,
-      date: new Date().toISOString().slice(0,10), note: data.note || '',
-    });
-    // Cập nhật số dư
-    updateWallet(data.fromWalletId, { balance: fromWallet.balance - data.amount });
-    const toWallet = wallets.find((w) => w.id === data.toWalletId);
-    updateWallet(data.toWalletId,   { balance: toWallet.balance   + data.amount });
-    toast.success('Chuyển tiền thành công!');
-    setTransferModal(false);
-    resetT();
+    try {
+      await createTransferApi({
+        from_account_id: parseInt(data.fromWalletId),
+        to_account_id: parseInt(data.toWalletId),
+        amount: data.amount,
+        fee: 0,
+        transfer_date: new Date().toISOString().slice(0, 10),
+        note: data.note || ''
+      });
+      // Cập nhật lại toàn bộ dữ liệu vì ví và giao dịch đều bị ảnh hưởng
+      await fetchAllData();
+      toast.success('Chuyển tiền thành công!');
+      setTransferModal(false);
+      resetT();
+    } catch (err) {
+      toast.error('Có lỗi xảy ra, thử lại sau');
+    }
   };
 
   return (
@@ -306,7 +310,16 @@ const WalletsPage = () => {
       <ConfirmDialog
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
-        onConfirm={() => { deleteWallet(deleteId); toast.success('Đã xóa ví'); setDeleteId(null); }}
+        onConfirm={async () => {
+          try {
+            await deleteWallet(deleteId);
+            toast.success('Đã xóa ví');
+            setDeleteId(null);
+          } catch (err) {
+            toast.error(err.response?.data?.message || 'Không thể xóa ví này!');
+            setDeleteId(null);
+          }
+        }}
         title="Xóa ví"
         message="Ví sẽ bị xóa. Các giao dịch liên quan không bị xóa. Bạn có chắc chắn?"
       />

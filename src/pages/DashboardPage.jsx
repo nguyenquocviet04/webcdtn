@@ -1,7 +1,7 @@
 // pages/DashboardPage.jsx
 // Trang tổng quan với StatCards, Charts và danh sách giao dịch gần nhất
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -15,9 +15,8 @@ import useUIStore from '../store/uiStore';
 import useAuthStore from '../store/authStore';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDate } from '../utils/formatDate';
-import { sumBy, groupBy } from '../utils/calcPercent';
-import { getCategoryById } from '../constants/categories';
-import { MOCK_DAILY_CHART } from '../constants/mockData';
+import { sumBy } from '../utils/calcPercent';
+import { getSummaryApi, getDailyChartApi, getTopCategoriesApi } from '../api/reportApi';
 import StatCard from '../components/ui/StatCard';
 import BudgetProgressBar from '../components/ui/BudgetProgressBar';
 import CategoryIcon from '../components/ui/CategoryIcon';
@@ -48,37 +47,64 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const DashboardPage = () => {
-  const { transactions, budgets } = useTransactionStore();
+  const { transactions, budgets, expenseCategories, incomeCategories } = useTransactionStore();
   const { setQuickAddOpen }       = useUIStore();
   const { user }                  = useAuthStore();
 
   const thisMonth = dayjs().format('YYYY-MM');
 
-  // Lọc giao dịch tháng này
+  const [summary, setSummary] = useState({ income: 0, expense: 0, balance: 0 });
+  const [dailyChart, setDailyChart] = useState([]);
+  const [expensePieData, setExpensePieData] = useState([]);
+
+  // Fetch report data from API
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const today = dayjs();
+        const m = today.month() + 1;
+        const y = today.year();
+
+        const [sumRes, dailyRes, topRes] = await Promise.all([
+          getSummaryApi(m, y),
+          getDailyChartApi(today.subtract(6, 'day').format('YYYY-MM-DD'), today.format('YYYY-MM-DD')),
+          getTopCategoriesApi('expense', m, y, 6)
+        ]);
+        
+        setSummary({
+          income: parseFloat(sumRes.total_income || 0),
+          expense: parseFloat(sumRes.total_expense || 0),
+          balance: parseFloat(sumRes.net_balance || 0)
+        });
+
+        const mappedDaily = dailyRes.map(d => ({
+          date: dayjs(d.date).format('DD/MM'),
+          thu: parseFloat(d.income),
+          chi: parseFloat(d.expense)
+        }));
+        setDailyChart(mappedDaily);
+
+        const mappedPie = topRes.map(cat => ({
+          name: cat.category_name,
+          value: parseFloat(cat.total_amount),
+          color: cat.category_color
+        }));
+        setExpensePieData(mappedPie);
+
+      } catch (error) {
+        console.error('Failed to fetch dashboard reports:', error);
+      }
+    };
+    fetchReports();
+  }, [transactions]); // Re-fetch whenever transactions change
+
+  // Lọc giao dịch tháng này để tính budget
   const monthTxs = useMemo(
     () => transactions.filter((t) => t.date?.startsWith(thisMonth)),
     [transactions, thisMonth],
   );
 
-  const totalIncome  = useMemo(() => sumBy(monthTxs.filter((t) => t.type === 'income'),  'amount'), [monthTxs]);
-  const totalExpense = useMemo(() => sumBy(monthTxs.filter((t) => t.type === 'expense'), 'amount'), [monthTxs]);
-  const balance      = totalIncome - totalExpense;
-
-  // Dữ liệu pie chart theo danh mục chi
-  const expensePieData = useMemo(() => {
-    const expTxs   = monthTxs.filter((t) => t.type === 'expense');
-    const grouped  = groupBy(expTxs, 'categoryId');
-    return Object.entries(grouped)
-      .map(([catId, txs]) => ({
-        name:  getCategoryById(catId).name,
-        value: sumBy(txs, 'amount'),
-        color: getCategoryById(catId).color,
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 6);
-  }, [monthTxs]);
-
-  // Tính spent per budget
+  // Tính spent per budget (still local since transactions are up-to-date in store)
   const budgetSpent = useMemo(() => {
     const result = {};
     budgets.forEach((b) => {
@@ -95,6 +121,12 @@ const DashboardPage = () => {
     () => [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 6),
     [transactions],
   );
+
+  const getCategoryById = (id) => {
+    return expenseCategories.find(c => c.id === id) || 
+           incomeCategories.find(c => c.id === id) || 
+           { name: 'Khác', icon: 'QuestionMark', color: '#cbd5e1' };
+  };
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -122,23 +154,21 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Tổng thu tháng này"
-          value={formatCurrency(totalIncome)}
+          value={formatCurrency(summary.income)}
           icon="TrendingUp"
           iconColor="text-income-600"
           iconBg="bg-income-50"
-          change={8}
         />
         <StatCard
           label="Tổng chi tháng này"
-          value={formatCurrency(totalExpense)}
+          value={formatCurrency(summary.expense)}
           icon="TrendingDown"
           iconColor="text-expense-600"
           iconBg="bg-expense-50"
-          change={-3}
         />
         <StatCard
           label="Số dư tháng này"
-          value={formatCurrency(balance)}
+          value={formatCurrency(summary.balance)}
           icon="Wallet"
           iconColor="text-primary-600"
           iconBg="bg-primary-50"
@@ -156,7 +186,7 @@ const DashboardPage = () => {
             </Link>
           </div>
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={MOCK_DAILY_CHART} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <AreaChart data={dailyChart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="thuGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#16a34a" stopOpacity={0.15} />
@@ -253,9 +283,16 @@ const DashboardPage = () => {
             </Link>
           </div>
           <div className="space-y-4">
-            {budgets.slice(0, 5).map((b) => (
-              <BudgetProgressBar key={b.id} budget={b} spent={budgetSpent[b.id] || 0} compact />
-            ))}
+            {budgets.slice(0, 5).map((b) => {
+               // Ngân sách hiện tại được fetch sẽ có category_id, ta cần map qua category object
+               const cat = getCategoryById(b.categoryId);
+               const limit = parseFloat(b.limit || 0);
+               // budget object expected by BudgetProgressBar requires .limit, .categoryId. It works if we pass full budget.
+               // It also needs category details inside BudgetProgressBar if we update BudgetProgressBar but BudgetProgressBar typically receives `spent` and calls `getCategoryById` itself. 
+               // Wait! BudgetProgressBar calls getCategoryById internally. It imports from `constants/categories`. 
+               // We need to fix BudgetProgressBar as well soon.
+               return <BudgetProgressBar key={b.id} budget={b} spent={budgetSpent[b.id] || 0} compact />;
+            })}
           </div>
         </div>
       </div>

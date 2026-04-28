@@ -10,7 +10,6 @@ import { TrendingUp, TrendingDown, PiggyBank, Percent } from 'lucide-react';
 import useTransactionStore from '../store/transactionStore';
 import { formatCurrency }  from '../utils/formatCurrency';
 import { sumBy, groupBy, calcSavingsRate } from '../utils/calcPercent';
-import { getCategoryById } from '../constants/categories';
 import { MOCK_MONTHLY_CHART } from '../constants/mockData';
 import StatCard from '../components/ui/StatCard';
 import CategoryIcon from '../components/ui/CategoryIcon';
@@ -45,7 +44,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 const ReportsPage = () => {
-  const { transactions } = useTransactionStore();
+  const { transactions, expenseCategories, incomeCategories } = useTransactionStore();
+
+  const getCategoryById = (id) => expenseCategories.find(c => c.id === Number(id)) || incomeCategories.find(c => c.id === Number(id)) || { name: 'Khác', icon: 'MoreHorizontal', color: '#94a3b8' };
+
   const [period, setPeriod] = useState('month');
 
   // Tính khoảng thời gian
@@ -90,6 +92,31 @@ const ReportsPage = () => {
 
   const top5 = expenseByCategory.slice(0, 5);
 
+  // Tính dữ liệu biểu đồ 6 tháng gần nhất từ dữ liệu thực
+  const monthlyChartData = useMemo(() => {
+    const data = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = dayjs().subtract(i, 'month');
+      const mStart = d.startOf('month');
+      const mEnd = d.endOf('month');
+      
+      const txsInMonth = transactions.filter(t => {
+        const tDate = dayjs(t.date);
+        return tDate.isAfter(mStart.subtract(1, 'day')) && tDate.isBefore(mEnd.add(1, 'day'));
+      });
+      
+      const thu = sumBy(txsInMonth.filter(t => t.type === 'income'), 'amount');
+      const chi = sumBy(txsInMonth.filter(t => t.type === 'expense'), 'amount');
+      
+      data.push({
+        month: d.format('MM/YY'),
+        thu,
+        chi
+      });
+    }
+    return data;
+  }, [transactions]);
+
   return (
     <div className="space-y-5">
       {/* Header + Period selector */}
@@ -130,7 +157,7 @@ const ReportsPage = () => {
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-white mb-4">Thu nhập vs Chi tiêu theo tháng</h2>
         <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={MOCK_MONTHLY_CHART} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+          <BarChart data={monthlyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v) => formatCurrency(v, true)} />
@@ -150,7 +177,7 @@ const ReportsPage = () => {
         <div className="card p-5">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-white mb-4">Xu hướng chi tiêu</h2>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={MOCK_MONTHLY_CHART} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+            <LineChart data={monthlyChartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(v) => formatCurrency(v, true)} />

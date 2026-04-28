@@ -37,7 +37,8 @@ const RegisterPage = () => {
       toast.success('Tạo tài khoản thành công! Chào mừng bạn 🎉');
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.message || 'Đăng ký thất bại');
+      const msg = err.response?.data?.message || err.message || 'Đăng ký thất bại';
+      toast.error(msg);
     }
   };
 

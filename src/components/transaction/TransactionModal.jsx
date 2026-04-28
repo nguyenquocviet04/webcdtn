@@ -1,7 +1,7 @@
 // components/transaction/TransactionModal.jsx
 // Form thêm và sửa giao dịch đầy đủ
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -10,6 +10,7 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import AmountInput from '../ui/AmountInput';
 import CategoryIcon from '../ui/CategoryIcon';
+import ReceiptScanner from './ReceiptScanner';
 import useTransactionStore from '../../store/transactionStore';
 import { formatDate } from '../../utils/formatDate';
 import dayjs from 'dayjs';
@@ -30,6 +31,8 @@ const TransactionModal = ({ isOpen, onClose, editData = null }) => {
     addTransaction, updateTransaction,
     expenseCategories, incomeCategories, wallets,
   } = useTransactionStore();
+
+  const [showScanner, setShowScanner] = useState(false);
 
   const {
     register, handleSubmit, control, watch, setValue,
@@ -79,20 +82,21 @@ const TransactionModal = ({ isOpen, onClose, editData = null }) => {
   const onSubmit = async (data) => {
     try {
       if (editData) {
-        updateTransaction(editData.id, data);
+        await updateTransaction(editData.id, data);
         toast.success('Đã cập nhật giao dịch');
       } else {
-        addTransaction(data);
+        await addTransaction(data);
         toast.success('Đã thêm giao dịch mới');
       }
       onClose();
       reset();
-    } catch {
-      toast.error('Có lỗi xảy ra, thử lại sau');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Có lỗi xảy ra, thử lại sau');
     }
   };
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -112,6 +116,16 @@ const TransactionModal = ({ isOpen, onClose, editData = null }) => {
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+        {/* Nút quét hoá đơn — chỉ hiện khi thêm mới */}
+        {!editData && (
+          <button
+            type="button"
+            onClick={() => setShowScanner(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-sm font-medium transition-all"
+          >
+            📷 Quét ảnh hoá đơn tự động điền
+          </button>
+        )}
         {/* Loại giao dịch */}
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -251,6 +265,42 @@ const TransactionModal = ({ isOpen, onClose, editData = null }) => {
         </div>
       </form>
     </Modal>
+
+    {/* Modal quét hoá đơn */}
+    {showScanner && (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-dark-800 rounded-2xl w-full max-w-md p-5 shadow-2xl">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-lg text-slate-800 dark:text-white">Quét hoá đơn</h3>
+            <button
+              onClick={() => setShowScanner(false)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              ×
+            </button>
+          </div>
+          <ReceiptScanner
+            onClose={() => setShowScanner(false)}
+            onResult={(data) => {
+              if (data.amount)           setValue('amount', data.amount);
+              if (data.description)      setValue('description', data.description);
+              if (data.transaction_date) setValue('date', data.transaction_date);
+              if (data.note)             setValue('note', data.note);
+              if (data.suggested_category && categories.length) {
+                const match = categories.find((c) =>
+                  c.name.toLowerCase().includes(data.suggested_category.toLowerCase()) ||
+                  data.suggested_category.toLowerCase().includes(c.name.toLowerCase())
+                );
+                if (match) setValue('categoryId', match.id);
+              }
+              setShowScanner(false);
+              toast.success('Đã điền thông tin từ hoá đơn!');
+            }}
+          />
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

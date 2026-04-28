@@ -18,6 +18,7 @@ const AiChat       = lazy(() => import('../pages/AiChatPage'));
 const Categories   = lazy(() => import('../pages/CategoriesPage'));
 const Wallets      = lazy(() => import('../pages/WalletsPage'));
 const Settings     = lazy(() => import('../pages/SettingsPage'));
+const HealthScore  = lazy(() => import('../pages/HealthScorePage'));
 
 // Fallback loading khi lazy load
 const PageLoader = () => (
@@ -49,6 +50,7 @@ const AppRouter = () => (
             <Route path="/categories"       element={<Categories />} />
             <Route path="/wallets"          element={<Wallets />} />
             <Route path="/settings"         element={<Settings />} />
+            <Route path="/health-score"      element={<HealthScore />} />
           </Route>
         </Route>
 

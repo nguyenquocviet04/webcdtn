@@ -1,15 +1,22 @@
 // components/layout/MainLayout.jsx
 // Layout chính: Sidebar + Navbar + main content area
 
+import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar  from './Navbar';
 import useUIStore from '../../store/uiStore';
+import useTransactionStore from '../../store/transactionStore';
 import TransactionModal from '../transaction/TransactionModal';
 import { Plus } from 'lucide-react';
 
 const MainLayout = () => {
   const { sidebarOpen, darkMode, quickAddOpen, setQuickAddOpen } = useUIStore();
+  const fetchAllData = useTransactionStore((s) => s.fetchAllData);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   return (
     <div className={darkMode ? 'dark' : ''}>

@@ -26,7 +26,7 @@ const Navbar = () => {
   const location                   = useLocation();
   const navigate                   = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [searchValue, setSearchValue]   = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const pageName = PAGE_NAMES[location.pathname] || 'Trang';
 
@@ -62,23 +62,33 @@ const Navbar = () => {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Search bar – desktop */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Tìm kiếm..."
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            className="pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 w-52 transition-all"
-          />
-        </div>
-
         {/* Notification bell */}
-        <button className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-expense-500 rounded-full ring-2 ring-white dark:ring-dark-800" />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            <Bell className="w-5 h-5" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-expense-500 rounded-full ring-2 ring-white dark:ring-dark-800" />
+          </button>
+
+          {showNotifications && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)} />
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-dark-800 rounded-2xl shadow-card-lg border border-slate-100 dark:border-slate-700 z-20 animate-slide-up overflow-hidden">
+                <div className="p-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white">Thông báo</p>
+                  <button className="text-xs text-primary-600 hover:underline">Đánh dấu đã đọc</button>
+                </div>
+                <div className="max-h-80 overflow-y-auto p-2">
+                  <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Bạn chưa có thông báo mới nào.
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* User menu */}
         <div className="relative">
