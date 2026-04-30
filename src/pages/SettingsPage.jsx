@@ -1,7 +1,7 @@
 // pages/SettingsPage.jsx
 // Cài đặt: hồ sơ cá nhân, đổi mật khẩu, tiền tệ, thông báo, dark mode
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -11,6 +11,7 @@ import useAuthStore from '../store/authStore';
 import useUIStore   from '../store/uiStore';
 import Button       from '../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
+import { changePasswordApi, updateProfileApi, uploadAvatarApi } from '../api/authApi';
 
 const profileSchema = yup.object({
   name:  yup.string().min(2, 'Tên ít nhất 2 ký tự').required('Nhập họ tên'),
@@ -59,6 +60,9 @@ const SettingsPage = () => {
   const { darkMode, toggleDarkMode } = useUIStore();
   const navigate                     = useNavigate();
 
+  const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const [currency,      setCurrency]      = useState(user?.currency || 'VND');
   const [notifications, setNotifications] = useState({
     email:  true,
@@ -81,15 +85,45 @@ const SettingsPage = () => {
   } = useForm({ resolver: yupResolver(passwordSchema) });
 
   const onProfileSubmit = async (data) => {
-    await new Promise((r) => setTimeout(r, 600));
-    updateUser({ name: data.name, email: data.email });
-    toast.success('Đã cập nhật hồ sơ');
+    try {
+      await updateProfileApi({ full_name: data.name });
+      updateUser({ name: data.name, email: data.email });
+      toast.success('Đã cập nhật hồ sơ');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Lỗi khi cập nhật hồ sơ');
+    }
   };
 
-  const onPasswordSubmit = async () => {
-    await new Promise((r) => setTimeout(r, 600));
-    toast.success('Đã đổi mật khẩu thành công');
-    resetPwd();
+  const onPasswordSubmit = async (data) => {
+    try {
+      await changePasswordApi({ oldPassword: data.oldPassword, newPassword: data.newPassword });
+      toast.success('Đã đổi mật khẩu thành công');
+      resetPwd();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Lỗi đổi mật khẩu. Vui lòng kiểm tra lại');
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh hợp lệ (JPG, PNG)');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const avatarUrl = await uploadAvatarApi(file);
+      updateUser({ avatar: avatarUrl });
+      toast.success('Đã cập nhật ảnh đại diện');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Lỗi khi tải ảnh lên');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleLogout = () => {
@@ -107,19 +141,44 @@ const SettingsPage = () => {
         {/* Avatar */}
         <div className="flex items-center gap-4 mb-6">
           <div className="relative">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </span>
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center overflow-hidden border-2 border-white dark:border-slate-800">
+              {user?.avatar ? (
+                <img
+                  src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}${user.avatar}`}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl font-bold text-white">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </span>
+              )}
             </div>
-            <button className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center shadow">
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center shadow hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            >
               <Camera className="w-3 h-3 text-white" />
             </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleAvatarChange} 
+            />
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.name}</p>
             <p className="text-xs text-slate-400">{user?.email}</p>
-            <p className="text-xs text-primary-600 mt-1 cursor-pointer hover:underline">Thay đổi ảnh đại diện</p>
+            <p 
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs text-primary-600 mt-1 cursor-pointer hover:underline"
+            >
+              {isUploading ? 'Đang tải ảnh lên...' : 'Thay đổi ảnh đại diện'}
+            </p>
           </div>
         </div>
 

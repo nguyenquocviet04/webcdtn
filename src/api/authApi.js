@@ -53,6 +53,17 @@ export const updateProfileApi = async (data) => {
   return mapUser(res.data.data);
 };
 
+// ── Upload Avatar ────────────────────────────────────────────
+export const uploadAvatarApi = async (file) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const res = await axiosInstance.post('/v1/users/upload-avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  // Trả về URL avatar
+  return res.data.data.avatar_url;
+};
+
 // ── Helper: Map user từ backend format sang frontend format ──
 const mapUser = (user) => ({
   id:        user.id,

@@ -124,10 +124,18 @@ const Sidebar = () => {
           {/* Avatar */}
           {!collapsed && user && (
             <div className="flex items-center gap-2.5 p-2 mt-2 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-white">
-                  {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                </span>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}${user.avatar}`}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs font-bold text-white">
+                    {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                )}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">{user.name}</p>
