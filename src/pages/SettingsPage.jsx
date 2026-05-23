@@ -86,7 +86,7 @@ const SettingsPage = () => {
 
   const onProfileSubmit = async (data) => {
     try {
-      await updateProfileApi({ full_name: data.name });
+      await updateProfileApi({ full_name: data.name, email: data.email });
       updateUser({ name: data.name, email: data.email });
       toast.success('Đã cập nhật hồ sơ');
     } catch (error) {

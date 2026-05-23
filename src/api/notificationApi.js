@@ -3,7 +3,8 @@ import axiosInstance from './axiosInstance';
 
 export const getNotificationsApi = async (params = {}) => {
   const res = await axiosInstance.get('/v1/notifications', { params });
-  return res.data.data;
+  // Backend: success(res, { data: rows, pagination }) → res.data.data.data = rows
+  return res.data.data?.data ?? res.data.data ?? [];
 };
 
 export const getUnreadCountApi = async () => {

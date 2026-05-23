@@ -25,6 +25,7 @@ const PERIOD_OPTIONS = [
   { value: 'month',   label: 'Tháng này'},
   { value: 'quarter', label: 'Quý này'  },
   { value: 'year',    label: 'Năm này'  },
+  { value: 'custom',  label: 'Tùy chọn' },
 ];
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -50,6 +51,32 @@ const ReportsPage = () => {
 
   const [period, setPeriod] = useState('month');
 
+  // Custom date range state
+  const today = dayjs().format('YYYY-MM-DD');
+  const [customStart, setCustomStart] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
+  const [customEnd,   setCustomEnd]   = useState(today);
+  const [customError, setCustomError] = useState('');
+
+  const handleCustomStart = (val) => {
+    setCustomStart(val);
+    if (customEnd && val) {
+      const diff = dayjs(customEnd).diff(dayjs(val), 'day');
+      if (diff < 0)  setCustomError('Ngày bắt đầu phải trước ngày kết thúc.');
+      else if (diff > 30) setCustomError('Khoảng thời gian tối đa là 31 ngày.');
+      else setCustomError('');
+    }
+  };
+
+  const handleCustomEnd = (val) => {
+    setCustomEnd(val);
+    if (customStart && val) {
+      const diff = dayjs(val).diff(dayjs(customStart), 'day');
+      if (diff < 0)  setCustomError('Ngày bắt đầu phải trước ngày kết thúc.');
+      else if (diff > 30) setCustomError('Khoảng thời gian tối đa là 31 ngày.');
+      else setCustomError('');
+    }
+  };
+
   // Tính khoảng thời gian
   const dateRange = useMemo(() => {
     const now = dayjs();
@@ -58,9 +85,10 @@ const ReportsPage = () => {
       case 'month':   return { start: now.startOf('month'),     end: now.endOf('month') };
       case 'quarter': return { start: now.startOf('quarter'),   end: now.endOf('quarter') };
       case 'year':    return { start: now.startOf('year'),      end: now.endOf('year') };
+      case 'custom':  return { start: dayjs(customStart),       end: dayjs(customEnd) };
       default:        return { start: now.startOf('month'),     end: now.endOf('month') };
     }
-  }, [period]);
+  }, [period, customStart, customEnd]);
 
   // Lọc giao dịch theo kỳ
   const filteredTxs = useMemo(() => {
@@ -127,7 +155,7 @@ const ReportsPage = () => {
             {dateRange.start.format('DD/MM/YYYY')} – {dateRange.end.format('DD/MM/YYYY')}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {PERIOD_OPTIONS.map(({ value, label }) => (
             <button
               key={value}
@@ -144,6 +172,38 @@ const ReportsPage = () => {
           ))}
         </div>
       </div>
+
+      {/* Custom date range inputs */}
+      {period === 'custom' && (
+        <div className="card p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Từ ngày</label>
+              <input
+                type="date"
+                value={customStart}
+                max={customEnd || today}
+                onChange={(e) => handleCustomStart(e.target.value)}
+                className="input-base text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400 whitespace-nowrap">Đến ngày</label>
+              <input
+                type="date"
+                value={customEnd}
+                min={customStart}
+                max={today}
+                onChange={(e) => handleCustomEnd(e.target.value)}
+                className="input-base text-sm"
+              />
+            </div>
+            {customError && (
+              <p className="text-xs text-expense-600 font-medium">{customError}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -37,10 +37,12 @@ axiosInstance.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      // Token hết hạn → xóa auth state và về trang login
-      localStorage.removeItem('cdtn-auth');
-      toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-      window.location.href = '/login';
+      // Bỏ qua nếu đây là request đang gọi API login (sai mật khẩu)
+      if (error.config && !error.config.url.includes('/login')) {
+        localStorage.removeItem('cdtn-auth');
+        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        window.location.href = '/login';
+      }
     } else if (status === 403) {
       toast.error('Bạn không có quyền thực hiện hành động này.');
     } else if (status === 404) {

@@ -6,6 +6,7 @@ import axiosInstance from '../api/axiosInstance';
 import { Send, Bot, Sparkles, Plus, Trash2, MessageCircle } from 'lucide-react';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
+import useAuthStore from '../store/authStore';
 
 // Format số tiền nổi bật trong câu trả lời AI
 const formatAiText = (text) =>
@@ -35,6 +36,8 @@ const TypingIndicator = () => (
 
 const ChatMessage = ({ msg }) => {
   const isAI = msg.role === 'assistant';
+  const { user } = useAuthStore();
+  
   return (
     <div className={`flex gap-3 items-end ${isAI ? '' : 'flex-row-reverse'}`}>
       {isAI ? (
@@ -42,8 +45,18 @@ const ChatMessage = ({ msg }) => {
           <Bot className="w-4 h-4 text-white" />
         </div>
       ) : (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-bold text-white">U</span>
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+          {user?.avatar ? (
+            <img
+              src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000'}${user.avatar}`}
+              alt="Avatar"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-xs font-bold text-white">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </span>
+          )}
         </div>
       )}
       <div className={`max-w-[80%] ${isAI ? '' : ''}`}>

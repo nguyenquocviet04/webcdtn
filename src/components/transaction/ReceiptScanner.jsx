@@ -8,14 +8,14 @@ import { Camera, Upload, RefreshCw, CheckCircle, AlertTriangle, X, ScanLine } fr
 // step: 'idle' | 'preview' | 'scanning' | 'result' | 'error'
 
 const ReceiptScanner = ({ onResult, onClose }) => {
-  const [step, setStep]               = useState('idle');
-  const [previewUrl, setPreviewUrl]   = useState(null);
+  const [step, setStep] = useState('idle');
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [scanResult, setScanResult]   = useState(null);
-  const [errorMsg, setErrorMsg]       = useState('');
-  const [isDragOver, setIsDragOver]   = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const fileInputRef   = useRef(null);
+  const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
   const formatVND = (n) => n ? Number(n).toLocaleString('vi-VN') + 'đ' : '—';
@@ -64,11 +64,11 @@ const ReceiptScanner = ({ onResult, onClose }) => {
 
   const handleUseResult = () => {
     onResult({
-      amount:           scanResult.total_amount,
-      description:      scanResult.description || scanResult.store_name || '',
+      amount: scanResult.total_amount,
+      description: scanResult.description || scanResult.store_name || '',
       transaction_date: scanResult.transaction_date || new Date().toISOString().split('T')[0],
       suggested_category: scanResult.suggested_category,
-      image_url:        scanResult.image_url,
+      image_url: scanResult.image_url,
       note: scanResult.items?.length
         ? 'Items: ' + scanResult.items.map((i) => `${i.name} x${i.quantity}`).join(', ')
         : '',
@@ -131,7 +131,7 @@ const ReceiptScanner = ({ onResult, onClose }) => {
         </button>
       </div>
 
-      <input ref={fileInputRef}   type="file" accept="image/*"                    className="hidden" onChange={(e) => handleFileSelect(e.target.files[0])} />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e.target.files[0])} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleFileSelect(e.target.files[0])} />
     </div>
   );
@@ -168,7 +168,7 @@ const ReceiptScanner = ({ onResult, onClose }) => {
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
           <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
           <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-white/80 dark:bg-slate-800/80 px-3 py-1 rounded-full">
-            Gemini đang phân tích...
+            Hệ thống đang phân tích...
           </p>
         </div>
       </div>
@@ -179,7 +179,7 @@ const ReceiptScanner = ({ onResult, onClose }) => {
   // ── RESULT: Hiển thị kết quả ─────────────────────────────────
   if (step === 'result' && scanResult) {
     const confidence = scanResult.confidence || 0;
-    const confColor  = confidence >= 0.8 ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100';
+    const confColor = confidence >= 0.8 ? 'text-green-600 bg-green-100' : 'text-yellow-600 bg-yellow-100';
 
     return (
       <div className="space-y-4">
@@ -206,15 +206,15 @@ const ReceiptScanner = ({ onResult, onClose }) => {
 
         {/* Grid thông tin */}
         <div className="grid grid-cols-2 gap-3">
-          <InfoItem label="Cửa hàng"     value={scanResult.store_name} />
+          <InfoItem label="Cửa hàng" value={scanResult.store_name} />
           <InfoItem
             label="Tổng tiền"
             value={formatVND(scanResult.total_amount)}
             highlight
           />
-          <InfoItem label="Ngày"         value={scanResult.transaction_date} />
-          <InfoItem label="Danh mục"     value={scanResult.suggested_category} />
-          <InfoItem label="Thanh toán"   value={scanResult.payment_method} className="col-span-2" />
+          <InfoItem label="Ngày" value={scanResult.transaction_date} />
+          <InfoItem label="Danh mục" value={scanResult.suggested_category} />
+          <InfoItem label="Thanh toán" value={scanResult.payment_method} className="col-span-2" />
         </div>
 
         {/* Danh sách món (collapsible) */}
@@ -295,11 +295,10 @@ const ReceiptScanner = ({ onResult, onClose }) => {
 const InfoItem = ({ label, value, highlight, className = '' }) => (
   <div className={`rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2 ${className}`}>
     <p className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</p>
-    <p className={`text-sm font-semibold mt-0.5 ${
-      highlight
+    <p className={`text-sm font-semibold mt-0.5 ${highlight
         ? 'text-indigo-600 dark:text-indigo-400 text-base'
         : 'text-slate-800 dark:text-slate-200'
-    } ${!value ? 'text-slate-400 font-normal' : ''}`}>
+      } ${!value ? 'text-slate-400 font-normal' : ''}`}>
       {value || '—'}
     </p>
   </div>
